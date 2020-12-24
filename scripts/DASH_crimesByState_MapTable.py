@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Dec 11 10:05:23 2020
-
-@author: jreye
-"""
 import os
 import us
 import glob
@@ -39,8 +33,6 @@ for file in glob.glob('*.csv'):
 # Concatenate all data into one DataFrame
 crimesAll_df = pd.concat(dfs, ignore_index=True)
 
-
-#%%
 state_abbrs = []
 for x in crimesAll_df['State']:
     state = us.states.lookup(x)
@@ -60,14 +52,6 @@ years = crimesAll_df.Year.sort_values().unique().tolist()
 crimes = crimesAll_df.columns[3:].unique().tolist()
 # Copy Data for plotting
 dff = crimesAll_df.copy()
-
-crimes = dff[['Violent Crime','Murder-Manslaughter', 'Rape',
-                  'Rape-Legacy', 'Robbery','Aggravated Assault', 
-                  'Property Crime', 'Burglary', 'Larceny-Theft',
-                  'Motor Vehicle Theft', '% Violent Crime', 
-                  '% Murder-Manslaughter','% Rape', '% Robbery', 
-                  '% Aggravated Assault', '% Property Crime',
-                  '% Burglary', '% Larceny-Theft', '% Motor Vehicle Theft']]
 
 #%%
 ### DASH App ####
@@ -90,37 +74,27 @@ app.layout = html.Div(children=[
     dcc.Dropdown(id="slct_crime",
                      options=[{'label' : c, 'value' : c} for c in crimes],
                      multi=False,
-                     value="Violent Crime",
+                     value='Violent Crime',
                      placeholder='Select Crime',
                      style={'width':200,'display':'inline-block'},
         ),
     html.Br(),
-    # Create Crime Map
     dcc.Graph(id='crime_map', figure={}, style={'width':'100%',\
                                                    'display':'inline-block'}
-        ),
-    # Create Line Graph
-    dcc.Graph(id='line_graph', \
-        figure = px.line(dff, x="Year", y="Violent Crime", color="Year",
-        template='plotly_dark'),
         ),
     # Create a Disclaimer for the percentages (%)
     html.Div(id='disclaimer', children=[\
         " * Percentages (%) of Crimes are total crimes per 500,000 people"]),
     # Create Break
     html.Br(),
-    # Create Scatter Plot
-    dcc.Graph(id='scatter_plot', \
-        figure = px.scatter(dff, x="State", y="Violent Crime", color="Year",
-        color_continuous_scale = px.colors.sequential.YlOrRd,
-        template='plotly_dark'),
-        ),
+    # Create Scatter Plot 
+    # dcc.Graph(
+    #     id='scatter_plot'),
     html.Br(),
     # Create a data table
-    dash_table.DataTable(
+    html.Div(dash_table.DataTable(
         id='table-paging-with-graph',
         columns=[{"name": i, "id": i} for i in crimesAll_df.columns],
-        fixed_columns={'headers': True},
         page_current=0,
         page_size=20,
         page_action='custom',
@@ -134,8 +108,14 @@ app.layout = html.Div(children=[
         sort_by=[],
         
         style_table={'height':'300px','overflowY':'auto'},
-        style_cell={'height': 'auto','whiteSpace': 'normal','width':'auto'},
+        style_cell={
+            'height': 'auto',
+            'whiteSpace': 'normal',
+            #'overflowX':'normal',
+            'width':'auto',
+            },   
         ),
+    ),
   ])
 
 
@@ -176,15 +156,14 @@ def split_filter_part(filter_part):
 # Connect the Plotly graphs with Dash Components
 @app.callback(
     Output(component_id='crime_map', component_property='figure'),
-    Output(component_id='line_graph', component_property='figure'),
     Input(component_id='slct_year', component_property='value'),
     Input(component_id='slct_crime', component_property='value'))
 
 def update_map(slct_year, slct_crime):   
+    
     print(slct_year, slct_crime)
     #print(type(slct_year),type(slct_crime))
-    
-    dff = crimesAll_df.copy()
+    dff = crimesAll_df.copy()   
     dff = dff[dff['Year'] == slct_year]
     #dff = dff[['Year',slct_crime]]
         
@@ -211,13 +190,6 @@ def update_map(slct_year, slct_crime):
     )
     return fig
 
-def update_line(slct_year, slct_crime):
-    dff = dff[dff.columns == slct_crime]
-    fig = px.Scatter(dff, x=slct_crime0, y=slct_year, color="Year",
-        template='plotly_dark',orientation='h')
-    return fig
-    
-    
 @app.callback(
     Output('table-paging-with-graph', "data"),
     Input('table-paging-with-graph', "page_current"),
@@ -229,8 +201,8 @@ def update_line(slct_year, slct_crime):
 def update_table(page_current, page_size, sort_by, filter,slct_year):
     filtering_expressions = filter.split(' && ')
     dff = crimesAll_df.copy()
-    #dff = dff[dff['Year'] == slct_year]
-    #items_l = []
+    dff = dff[dff['Year'] == slct_year]
+    items_l = []
     for filter_part in filtering_expressions:
         col_name, operator, filter_value = split_filter_part(filter_part)
 
@@ -238,7 +210,7 @@ def update_table(page_current, page_size, sort_by, filter,slct_year):
             # these operators match pandas series operator method names
             dff = dff.loc[getattr(dff[col_name], operator)(filter_value)]
         elif operator == 'contains':
-            dff = dff.loc[dff[col_name] == filter_value]
+            dff = dff.loc[dff[col_name].str.contains(filter_value)]
         elif operator == 'datestartswith':
             # this is a simplification of the front-end filtering logic,
             # only works with complete fields in standard format
@@ -257,6 +229,15 @@ def update_table(page_current, page_size, sort_by, filter,slct_year):
     return dff.iloc[
         page_current*page_size: (page_current + 1)*page_size
     ].to_dict('records')
+
+def update_scatter(slct_year, slct_crime):
+    dff = crimesAll_df.copy()
+    dff = dff[dff['Year'] == slct_year]
+    #dff = dff[slct_crime]
+    #fig = px.scatter(dff, x="State", y="Violent Crime", color="Year")
+    #print (dff)
+    return dff
+
 
 #app.config.supress_callback_exceptions = True
 

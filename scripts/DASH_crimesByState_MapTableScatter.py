@@ -61,14 +61,6 @@ crimes = crimesAll_df.columns[3:].unique().tolist()
 # Copy Data for plotting
 dff = crimesAll_df.copy()
 
-crimes = dff[['Violent Crime','Murder-Manslaughter', 'Rape',
-                  'Rape-Legacy', 'Robbery','Aggravated Assault', 
-                  'Property Crime', 'Burglary', 'Larceny-Theft',
-                  'Motor Vehicle Theft', '% Violent Crime', 
-                  '% Murder-Manslaughter','% Rape', '% Robbery', 
-                  '% Aggravated Assault', '% Property Crime',
-                  '% Burglary', '% Larceny-Theft', '% Motor Vehicle Theft']]
-
 #%%
 ### DASH App ####
 #external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -95,14 +87,8 @@ app.layout = html.Div(children=[
                      style={'width':200,'display':'inline-block'},
         ),
     html.Br(),
-    # Create Crime Map
     dcc.Graph(id='crime_map', figure={}, style={'width':'100%',\
                                                    'display':'inline-block'}
-        ),
-    # Create Line Graph
-    dcc.Graph(id='line_graph', \
-        figure = px.line(dff, x="Year", y="Violent Crime", color="Year",
-        template='plotly_dark'),
         ),
     # Create a Disclaimer for the percentages (%)
     html.Div(id='disclaimer', children=[\
@@ -134,7 +120,12 @@ app.layout = html.Div(children=[
         sort_by=[],
         
         style_table={'height':'300px','overflowY':'auto'},
-        style_cell={'height': 'auto','whiteSpace': 'normal','width':'auto'},
+        style_cell={
+            'height': 'auto',
+            'whiteSpace': 'normal',
+            #'overflowX':'normal',
+            'width':'auto',
+            },   
         ),
   ])
 
@@ -173,10 +164,11 @@ def split_filter_part(filter_part):
     return [None] * 3
 
 
-# Connect the Plotly graphs with Dash Components
+### Connect the Plotly graphs with Dash Components ###
+
+# Update Crime Map
 @app.callback(
     Output(component_id='crime_map', component_property='figure'),
-    Output(component_id='line_graph', component_property='figure'),
     Input(component_id='slct_year', component_property='value'),
     Input(component_id='slct_crime', component_property='value'))
 
@@ -211,13 +203,6 @@ def update_map(slct_year, slct_crime):
     )
     return fig
 
-def update_line(slct_year, slct_crime):
-    dff = dff[dff.columns == slct_crime]
-    fig = px.Scatter(dff, x=slct_crime0, y=slct_year, color="Year",
-        template='plotly_dark',orientation='h')
-    return fig
-    
-    
 @app.callback(
     Output('table-paging-with-graph', "data"),
     Input('table-paging-with-graph', "page_current"),

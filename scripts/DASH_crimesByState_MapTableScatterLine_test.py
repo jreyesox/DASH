@@ -8,6 +8,7 @@ import os
 import us
 import glob
 import pandas as pd
+import numpy as np
 
 import dash
 import dash_core_components as dcc
@@ -61,14 +62,6 @@ crimes = crimesAll_df.columns[3:].unique().tolist()
 # Copy Data for plotting
 dff = crimesAll_df.copy()
 
-crimes = dff[['Violent Crime','Murder-Manslaughter', 'Rape',
-                  'Rape-Legacy', 'Robbery','Aggravated Assault', 
-                  'Property Crime', 'Burglary', 'Larceny-Theft',
-                  'Motor Vehicle Theft', '% Violent Crime', 
-                  '% Murder-Manslaughter','% Rape', '% Robbery', 
-                  '% Aggravated Assault', '% Property Crime',
-                  '% Burglary', '% Larceny-Theft', '% Motor Vehicle Theft']]
-
 #%%
 ### DASH App ####
 #external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -94,28 +87,34 @@ app.layout = html.Div(children=[
                      placeholder='Select Crime',
                      style={'width':200,'display':'inline-block'},
         ),
-    html.Br(),
-    # Create Crime Map
-    dcc.Graph(id='crime_map', figure={}, style={'width':'100%',\
-                                                   'display':'inline-block'}
-        ),
-    # Create Line Graph
-    dcc.Graph(id='line_graph', \
-        figure = px.line(dff, x="Year", y="Violent Crime", color="Year",
-        template='plotly_dark'),
-        ),
     # Create a Disclaimer for the percentages (%)
     html.Div(id='disclaimer', children=[\
         " * Percentages (%) of Crimes are total crimes per 500,000 people"]),
+    html.Br(),
+    
+    # Create Crime Graphs
+    html.Div(children=[
+        # Create Crime Map
+        dcc.Graph(id='crime_map', figure={}, style={'width':'50%',\
+                                                   'display':'inline-block'}
+        ),
+        # Create Crime Line Graph
+        dcc.Graph(id='line_graph', figure={}, style={'width':'49.3%',\
+                                                   'display':'inline-block',
+                                                   'padding-left':10}
+        ),
+    ],style={'width':'100%', 'display':'inline-block'}),
+
     # Create Break
     html.Br(),
+    
     # Create Scatter Plot
-    dcc.Graph(id='scatter_plot', \
-        figure = px.scatter(dff, x="State", y="Violent Crime", color="Year",
-        color_continuous_scale = px.colors.sequential.YlOrRd,
-        template='plotly_dark'),
-        ),
+    html.Div(dcc.Graph(id='scatter_plot', figure={},style={'width':'100%',\
+                                                   'display':'inline-block'}
+        )),
+    
     html.Br(),
+    
     # Create a data table
     dash_table.DataTable(
         id='table-paging-with-graph',
@@ -134,7 +133,12 @@ app.layout = html.Div(children=[
         sort_by=[],
         
         style_table={'height':'300px','overflowY':'auto'},
-        style_cell={'height': 'auto','whiteSpace': 'normal','width':'auto'},
+        style_cell={
+            'height': 'auto',
+            'whiteSpace': 'normal',
+            #'overflowX':'normal',
+            'width':'auto',
+            },   
         ),
   ])
 
@@ -173,10 +177,11 @@ def split_filter_part(filter_part):
     return [None] * 3
 
 
-# Connect the Plotly graphs with Dash Components
+### Connect the Plotly graphs with Dash Components ###
+
+# Update Crime Map
 @app.callback(
     Output(component_id='crime_map', component_property='figure'),
-    Output(component_id='line_graph', component_property='figure'),
     Input(component_id='slct_year', component_property='value'),
     Input(component_id='slct_crime', component_property='value'))
 
@@ -211,13 +216,51 @@ def update_map(slct_year, slct_crime):
     )
     return fig
 
+# Update Line Graph
+@app.callback(
+    Output(component_id='line_graph', component_property='figure'),
+    Input(component_id='slct_year', component_property='value'),
+    Input(component_id='slct_crime', component_property='value'))
+
 def update_line(slct_year, slct_crime):
-    dff = dff[dff.columns == slct_crime]
-    fig = px.Scatter(dff, x=slct_crime0, y=slct_year, color="Year",
-        template='plotly_dark',orientation='h')
+    dff = crimesAll_df.copy()
+    dff_low = dff.loc[dff[slct_crime]< \
+                dff[slct_crime].quantile(.05)][['State','Year',slct_crime]]
+    dff_high = dff.loc[dff[slct_crime] > \
+                dff[slct_crime].quantile(.95)][['State','Year',slct_crime]]
+    states_low = dff_low.State.unique().tolist()
+    states_high = dff_high.State.unique().tolist()
+    dff["color"] = 'orange'
+    dff['color'].loc[dff['State'].isin(states_low)] = 'lightgrey'
+    dff['color'].loc[dff['State'].isin(states_high)] = 'red'    
+    dff_color = dff[['State','color']].drop_duplicates()
+    
+    # color map is a dict with colors, lightgrey for most, {"Aruba": "lightgrey", ... "Japan: "blue", ...}
+    color_map = {v["State"]: v["color"] for k,v in dff_color.iterrows()}
+    #print(color_map)
+    # show sample from the dictionary
+    #{k:color_map[k] for k in color_map if k in ["California","Texas","Wyoming","Vermont"]}
+    fig = px.line(dff, x="Year", y=slct_crime,\
+                  color='State', color_discrete_map=color_map,\
+                  template='plotly_dark')  
+    
     return fig
+
+# Update Scatter PLot
+@app.callback(
+    Output(component_id='scatter_plot', component_property='figure'),
+    Input(component_id='slct_year', component_property='value'),
+    Input(component_id='slct_crime', component_property='value'))
+
+def update_scatter(slct_year, slct_crime):
+    dff = crimesAll_df.copy()
+    fig = px.scatter(dff, x="State", y=slct_crime, color="Year",
+        color_continuous_scale = px.colors.sequential.YlOrRd,
+        template='plotly_dark')
     
-    
+    return fig
+
+# Update Data Table 
 @app.callback(
     Output('table-paging-with-graph', "data"),
     Input('table-paging-with-graph', "page_current"),
