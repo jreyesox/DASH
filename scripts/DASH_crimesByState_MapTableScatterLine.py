@@ -102,7 +102,7 @@ app.layout = html.Div(children=[
                                                    'display':'inline-block'}
         ),
         # Create Crime Line Graph
-        dcc.Graph(id='line_graph', figure={}, style={'width':'49.3%',\
+        dcc.Graph(id='line_graph', figure={}, style={'width':'49%',\
                                                    'display':'inline-block',
                                                    'padding-left':10}
         ),
@@ -130,12 +130,12 @@ app.layout = html.Div(children=[
         dash_table.DataTable(
             id='table-paging-with-graph',
             columns=[{"name": i, "id": i} for i in crimesAll_df.columns],
+            fixed_rows={'headers': True},
             fixed_columns={'headers': True},
             page_current=0,
             page_size=20,
             page_action='custom',
             
-            #fixed_rows={'headers': True},
             filter_action='custom',
             filter_query='',
             
@@ -147,7 +147,7 @@ app.layout = html.Div(children=[
             style_cell={
                 'height': 'auto',
                 'whiteSpace': 'normal',
-                #'overflowX':'normal',
+                'overflowX':'normal',
                 'width':'auto',
                 'backgroundColor': 'rgb(128,128,128)',
                 'color':'lightgrey'
