@@ -32,7 +32,7 @@ def gitData(startYear, endYear):
     # Downloading the csv file from your GitHub account
     yyyy = list(range(startYear,endYear+1))
     gitFolder =\
-    'https://raw.githubusercontent.com/jreyesox/FBI-UCR/main/data/normalized/'
+    'https://raw.githubusercontent.com/reyesjd86/FBI_UCR/main/data/normalized/'
     allFiles = []
     for year in yyyy:
         file = gitFolder+str(year)+'_crimes_byState.csv'
@@ -352,7 +352,6 @@ def update_table(page_current, page_size, sort_by, filter,slct_year):
         page_current*page_size: (page_current + 1)*page_size
     ].to_dict('records')
 
-#app.config.supress_callback_exceptions = True
 
 if __name__ == '__main__':
     app.run_server(debug=True, use_reloader=False)
